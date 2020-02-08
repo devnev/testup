@@ -9,8 +9,9 @@ import (
 	"github.com/devnev/testup"
 )
 
-// A standard test function (underscore added to aid `godoc`)
-func _TestMyType(t *testing.T) {
+func TestSuite(t *testing.T) {
+	// This is more of an example on how to use it, but happens to roughly make sure it works
+
 	testup.Suite(t, func(t *testing.T, check testup.Register) {
 		// This setup and teardown code will be executed once as a prelude, and once for every callback to check
 		dir, err := ioutil.TempDir(".", "test")
@@ -43,13 +44,9 @@ func _TestMyType(t *testing.T) {
 			if err != nil {
 				t.Fatalf("unexpected error from readdir: %s", err)
 			}
-			if len(items) != 1 || items[1].Name() != "testfile" {
+			if len(items) != 1 || items[0].Name() != "testfile" {
 				t.Fatalf("expected results to contain only testfile, got %+v", items)
 			}
 		})
 	})
-}
-
-func ExampleSuite() {
-	// see above
 }
