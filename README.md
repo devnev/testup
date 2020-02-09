@@ -2,6 +2,10 @@
 
 Shared test setup/teardown for Go tests.
 
+* Allows Suite-style tests without using reflection to detect methods. This makes the execution easier to follow and
+  avoids errors caused by typos in the names of reflected methods.
+* Simple implementation (50 lines) makes it easy to adapt and use for BDD or other styles of testing.
+
 ## Usage Example
 
 See [testup\_test.go](testup\_test.go) for longer example.
