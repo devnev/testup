@@ -6,6 +6,8 @@ Shared test setup/teardown for Go tests.
   avoids errors caused by typos in the names of reflected methods.
 * Simple implementation (50 lines) makes it easy to adapt and use for BDD or other styles of testing.
 
+[![Build Status](https://travis-ci.org/devnev/testup.svg?branch=master)](https://travis-ci.org/devnev/testup)
+
 ## Usage Example
 
 See [testup\_test.go](testup\_test.go) for longer example.
