@@ -8,7 +8,7 @@ avoids errors caused by typos in the names of reflected methods.
 
 ## Usage Example
 
-See [testup\_test.go](testup\_test.go) for longer example.
+See [example\_testup\_test.go](example\_testup\_test.go) for longer example.
 
 ```go
 package my_test
