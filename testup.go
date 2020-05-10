@@ -8,7 +8,7 @@ type Register func(caseName string, caseImpl func())
 // Only the check test case callback for the current run is actually invoked.
 // This allows common setup/teardown in the suite to be re-executed for every test case.
 func Suite(t *testing.T, suite func(t *testing.T, check Register)) {
-	runStackTarget(t, []*stackFrame{}, suite)
+	runTargetAndRecurse(t, []*stackFrame{}, suite)
 }
 
 type suiteFunc func(t *testing.T, check Register)
@@ -18,16 +18,15 @@ type stackFrame struct {
 	target int
 }
 
-func runStackTarget(t *testing.T, stack []*stackFrame, suite suiteFunc) {
-	seenNewNames := map[string]struct{}{}
-	var orderedNewNames []string
-	addName := func(name string) {
-		if _, ok := seenNewNames[name]; ok {
-			t.Fatalf("duplicate test case %q", name)
-		}
-		seenNewNames[name] = struct{}{}
-		orderedNewNames = append(orderedNewNames, name)
+func runTargetAndRecurse(t *testing.T, stack []*stackFrame, suite suiteFunc) {
+	newNames := runStackTarget(t, stack, suite)
+	if len(newNames) > 0 {
+		runLastFrame(t, append(stack, &stackFrame{names: newNames}), suite)
 	}
+}
+
+func runStackTarget(t *testing.T, stack []*stackFrame, suite suiteFunc) (subNames []string) {
+	seenNewNames := map[string]struct{}{}
 
 	currentCase := make([]int, 0, len(stack)+1)
 	currentCase = append(currentCase, 0)
@@ -38,7 +37,11 @@ func runStackTarget(t *testing.T, stack []*stackFrame, suite suiteFunc) {
 		// If we have a longer index than we have stack, this callback is being executed from
 		// within the target test case. Record the name of sub-checks without executing them.
 		if currentDepth > len(stack) {
-			addName(name)
+			if _, ok := seenNewNames[name]; ok {
+				t.Fatalf("duplicate test case %q", name)
+			}
+			seenNewNames[name] = struct{}{}
+			subNames = append(subNames, name)
 			return
 		}
 
@@ -85,9 +88,8 @@ func runStackTarget(t *testing.T, stack []*stackFrame, suite suiteFunc) {
 			}
 		}
 	})
-	if len(orderedNewNames) > 0 {
-		runLastFrame(t, append(stack, &stackFrame{names: orderedNewNames}), suite)
-	}
+
+	return subNames
 }
 
 func runLastFrame(t *testing.T, stack []*stackFrame, suite suiteFunc) {
@@ -95,7 +97,7 @@ func runLastFrame(t *testing.T, stack []*stackFrame, suite suiteFunc) {
 	for newFrame.target = 0; newFrame.target < len(newFrame.names); newFrame.target++ {
 		caseName := newFrame.names[newFrame.target]
 		t.Run(caseName, func(t *testing.T) {
-			runStackTarget(t, stack, suite)
+			runTargetAndRecurse(t, stack, suite)
 		})
 	}
 }
