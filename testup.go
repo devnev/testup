@@ -8,46 +8,94 @@ type Register func(caseName string, caseImpl func())
 // Only the check test case callback for the current run is actually invoked.
 // This allows common setup/teardown in the suite to be re-executed for every test case.
 func Suite(t *testing.T, suite func(t *testing.T, check Register)) {
-	t.Helper()
+	runStackTarget(t, []*stackFrame{}, suite)
+}
 
-	// Run the suite once without calling into any cases to discover all the cases
-	var names []string
-	{
-		seen := map[string]struct{}{}
-		suite(t, func(name string, _ func()) {
-			if _, ok := seen[name]; ok {
-				t.Fatalf("duplicate test case %q", name)
-			}
-			seen[name] = struct{}{}
-			names = append(names, name)
-		})
+type suiteFunc func(t *testing.T, check Register)
+
+type stackFrame struct {
+	names  []string
+	target int
+}
+
+func runStackTarget(t *testing.T, stack []*stackFrame, suite suiteFunc) {
+	seenNewNames := map[string]struct{}{}
+	var orderedNewNames []string
+	addName := func(name string) {
+		if _, ok := seenNewNames[name]; ok {
+			t.Fatalf("duplicate test case %q", name)
+		}
+		seenNewNames[name] = struct{}{}
+		orderedNewNames = append(orderedNewNames, name)
 	}
 
-	// Run the suite for each registered case, only executing the callback for that case
-	for targetIdx, targetName := range names {
-		// Use the case name to create a subtest
-		t.Run(targetName, func(t *testing.T) {
-			caseIdx := 0
-			suite(t, func(caseName string, tc func()) {
-				// Be strict about extra cases and unexpected names to avoid tests silently passing
-				if caseIdx >= len(names) {
-					t.Fatalf("unexpected extra case %q", caseName)
-				}
-				if caseName != names[caseIdx] {
-					t.Fatalf("case name at index %d changed; first %q then %q", caseIdx, names[caseIdx], caseName)
-				}
+	currentCase := make([]int, 0, len(stack)+1)
+	currentCase = append(currentCase, 0)
 
-				// Keep track of how many cases we've seen and run the current case if it's our target
-				runCase := caseIdx == targetIdx
-				caseIdx++
-				if runCase {
-					tc()
-				}
-			})
-			// Be strict about the number of callbacks seen in any case. This also ensures we actually called the target case.
-			if caseIdx != len(names) {
-				t.Fatalf("missing test case callbacks; expected %d but got %d", len(names), caseIdx)
+	suite(t, func(name string, cb func()) {
+		currentDepth := len(currentCase)
+
+		// If we have a longer index than we have stack, this callback is being executed from
+		// within the target test case. Record the name of sub-checks without executing them.
+		if currentDepth > len(stack) {
+			addName(name)
+			return
+		}
+
+		// Find the frame for the current case and check that the case is valid.
+		currIdx := currentCase[currentDepth-1]
+		currFrame := stack[currentDepth-1]
+		if currIdx >= len(currFrame.names) {
+			t.Fatalf("unexpected extra case %q", name)
+		}
+		if recordedName := currFrame.names[currIdx]; name != recordedName {
+			// Although not necessary, we're strict about the test case names staying the same to help
+			// debug test code.
+			t.Fatalf("case name at index %d changed; first %q then %q", currIdx, recordedName, name)
+		}
+
+		// Determine if we need to do anything, then record that we've seen the current case by
+		// incrementing the case index.
+		targetIdx := currFrame.target
+		runCase := currIdx == targetIdx
+		currentCase[currentDepth-1]++
+		if !runCase {
+			return
+		}
+
+		// We know that the current case is in the path to the target. Add a new frame of indexes
+		// for the sub-cases of the current case.
+		currentCase = append(currentCase, 0)
+		defer func() {
+			currentCase = currentCase[:currentDepth]
+		}()
+
+		// Execute check callback
+		cb()
+
+		// The check callback should have called back to us the same number of times as previously
+		// recorded, unless we were recording a new frame. We verify that these callbacks actually
+		// happened as the strict enforcement should help debug test code and also ensures that the
+		// target case was actually executed.
+		if len(stack) >= len(currentCase) {
+			called := currentCase[currentDepth]
+			expectedCalls := len(stack[currentDepth].names)
+			if called < expectedCalls {
+				t.Fatalf("missing test case callbacks; expected %d but got %d", expectedCalls, called)
 			}
+		}
+	})
+	if len(orderedNewNames) > 0 {
+		runLastFrame(t, append(stack, &stackFrame{names: orderedNewNames}), suite)
+	}
+}
+
+func runLastFrame(t *testing.T, stack []*stackFrame, suite suiteFunc) {
+	newFrame := stack[len(stack)-1]
+	for newFrame.target = 0; newFrame.target < len(newFrame.names); newFrame.target++ {
+		caseName := newFrame.names[newFrame.target]
+		t.Run(caseName, func(t *testing.T) {
+			runStackTarget(t, stack, suite)
 		})
 	}
 }
