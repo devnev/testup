@@ -12,15 +12,16 @@ import (
 // testOsStat emulates what a Test function for os.Stat might look like when using testup.Suite.
 func testOsStat(t *testing.T) {
 	// The entire callback to testup.Suite is run three times: once as a prelude, and once for every
-	// callback to check. Any setup and teardown that should be executed once for the entire suite
+	// callback to test. Any setup and teardown that should be executed once for the entire suite
 	// should be placed before the call to testup.Suite.
-	testup.Suite(t, func(t *testing.T, check testup.Register) {
-		check("of a directory", func() {
+	testup.Suite(t, func(t *testing.T, test testup.Register) {
+		test("of a directory", func() {
 			// This setup and teardown code is re-executed in each of the three runs.
 			dir, err := ioutil.TempDir(".", "test")
 			if err != nil {
 				t.Fatalf("unable to create test directory: %s", err)
 			}
+			// Teardown can be done using regular defer
 			defer func() {
 				err = os.RemoveAll(dir)
 				if err != nil {
@@ -28,10 +29,12 @@ func testOsStat(t *testing.T) {
 				}
 			}()
 
-			// In the first "prelude" run, none of the check callbacks below are executed.
+			// In the first "prelude" run, none of the test callbacks below are executed.
+			// Along with registering all the test cases, this allows testing the setup and teardown
+			// in isolation.
 
 			// In the second run, only this callback is executed
-			check("dir is a directory", func() {
+			test("dir is a directory", func() {
 				fi, err := os.Stat(dir)
 				if err != nil {
 					t.Fatalf("unexpected error from stat: %s", err)
@@ -41,8 +44,9 @@ func testOsStat(t *testing.T) {
 				}
 			})
 			// In the third run, only this callback is executed
-			check("dir contains created file", func() {
-				// We can safely mutate resource used in other check cases as each case is started with a fresh setup
+			test("dir contains created file", func() {
+				// We can safely mutate resource used in other test cases as each case is started
+				// with a fresh setup
 				err := ioutil.WriteFile(filepath.Join(dir, "testfile"), []byte("data"), 0644)
 				if err != nil {
 					t.Fatalf("unexpected error from writefile: %s", err)
@@ -57,8 +61,9 @@ func testOsStat(t *testing.T) {
 			})
 		})
 
-		check("of a file", func() {
-			// This setup and teardown code is re-executed in each of the three runs.
+		test("of a file", func() {
+			// This setup and teardown code is executed twice, once without the sub-test and once
+			// with the sub-test.
 			file, err := ioutil.TempFile(".", "test")
 			if err != nil {
 				t.Fatalf("unable to create test directory: %s", err)
@@ -70,7 +75,7 @@ func testOsStat(t *testing.T) {
 				}
 			}()
 
-			check("reports not a directory", func() {
+			test("reports not a directory", func() {
 				fi, err := os.Stat(file.Name())
 				if err != nil {
 					t.Fatalf("unexpected error from stat: %v", err)

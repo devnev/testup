@@ -4,14 +4,14 @@ import "testing"
 
 type Register func(caseName string, caseImpl func())
 
-// Suite re-runs the callback for every check registered during the first callback run.
-// Only the check test case callback for the current run is actually invoked.
+// Suite re-runs the callback for every test registered during the first callback run.
+// Only the test callback for the current run is actually invoked.
 // This allows common setup/teardown in the suite to be re-executed for every test case.
-func Suite(t *testing.T, suite func(t *testing.T, check Register)) {
+func Suite(t *testing.T, suite func(t *testing.T, test Register)) {
 	runTargetAndRecurse(t, []*stackFrame{}, suite)
 }
 
-type suiteFunc func(t *testing.T, check Register)
+type suiteFunc func(t *testing.T, test Register)
 
 type stackFrame struct {
 	names  []string
@@ -35,7 +35,7 @@ func runStackTarget(t *testing.T, stack []*stackFrame, suite suiteFunc) (subName
 		currentDepth := len(currentCase)
 
 		// If we have a longer index than we have stack, this callback is being executed from
-		// within the target test case. Record the name of sub-checks without executing them.
+		// within the target test case. Record the name of sub-tests without executing them.
 		if currentDepth > len(stack) {
 			if _, ok := seenNewNames[name]; ok {
 				t.Fatalf("duplicate test case %q", name)
@@ -73,10 +73,10 @@ func runStackTarget(t *testing.T, stack []*stackFrame, suite suiteFunc) (subName
 			currentCase = currentCase[:currentDepth]
 		}()
 
-		// Execute check callback
+		// Execute test callback
 		cb()
 
-		// The check callback should have called back to us the same number of times as previously
+		// The test callback should have called back to us the same number of times as previously
 		// recorded, unless we were recording a new frame. We verify that these callbacks actually
 		// happened as the strict enforcement should help debug test code and also ensures that the
 		// target case was actually executed.

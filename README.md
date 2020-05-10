@@ -20,26 +20,26 @@ import (
 
 func TestMyType(t *testing.T) {
     // Suite setup goes here (equivalent to SetupSuite/TeardownSuite functions in suite frameworks)
-    suiteStuff := setupSuite(t)
-    defer suiteStuff.Teardown()
+    harness := createHarness(t)
+    defer harness.Destroy()
 
-    testup.Suite(t, func(t *testing.T, check testup.Register) {
+    testup.Suite(t, func(t *testing.T, test testup.Register) {
         // Test setup goes here (equivalent to SetupTest/TeardownTest functions in suite frameworks)
-        stuff := setup(t)
+        stuff := setupState(t)
         defer func() {
           teardown(stuff)
         }()
 
         // Individual test cases. The names must be static and are used as the sub-test name to `t.Run`.
-        check("it does the thing", func() {
+        test("it does the thing", func() {
             // assert a thing
         })
-        check("it does something else", func() {
+        test("it does something else", func() {
             // assert something else
         })
-        check("with a particular setup", func() {
-          // Can have checks calls within callbacks. All setup and teardown is re-run for every check.
-          check("it does another thing", func() {
+        test("with a particular setup", func() {
+          // Can have test calls within callbacks. All setup and teardown is re-run for every sub-test.
+          test("it does another thing", func() {
             // more asserts
           })
         })
