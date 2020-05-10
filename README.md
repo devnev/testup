@@ -1,10 +1,8 @@
 # Go TestUp
 
-Shared test setup/teardown for Go tests.
-
-* Allows Suite-style tests without using reflection to detect methods. This makes the execution easier to follow and
-  avoids errors caused by typos in the names of reflected methods.
-* Simple implementation (50 lines) makes it easy to adapt and use for BDD or other styles of testing.
+Shared test setup/teardown for Go tests. Allows Suite-style tests without using
+reflection to detect methods. This makes the execution easier to follow and
+avoids errors caused by typos in the names of reflected methods.
 
 [![Build Status](https://travis-ci.org/devnev/testup.svg?branch=master)](https://travis-ci.org/devnev/testup)
 
@@ -38,6 +36,12 @@ func TestMyType(t *testing.T) {
         })
         check("it does something else", func() {
             // assert something else
+        })
+        check("with a particular setup", func() {
+          // Can have checks calls within callbacks. All setup and teardown is re-run for every check.
+          check("it does another thing", func() {
+            // more asserts
+          })
         })
     })
 }
