@@ -21,6 +21,7 @@ import (
 func TestMyType(t *testing.T) {
     // Suite setup goes here (equivalent to SetupSuite/TeardownSuite functions in suite frameworks)
     harness := createHarness(t)
+    // In Go 1.14+, harness may use t.Cleanup, making this defer unnecessary.
     defer harness.Destroy()
 
     testup.Suite(t, func(t *testing.T, test testup.Register) {
