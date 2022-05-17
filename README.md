@@ -1,3 +1,5 @@
+# This module was renamed to github.com/devnev/testeach
+
 # Go TestUp
 
 Shared test setup/teardown for Go tests. Allows Suite-style tests without using
